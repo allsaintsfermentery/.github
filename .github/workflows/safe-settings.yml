@@ -54,9 +54,9 @@ jobs:
           path: ${{ env.SAFE_SETTINGS_CODE_DIR }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: ${{ env.SAFE_SETTINGS_CODE_DIR }}/package-lock.json
 
