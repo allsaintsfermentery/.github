@@ -3,7 +3,7 @@
 # Per-repository overrides go in .github/repos/<repo-name>.yml
 
 repository:
-  private: true
+  private: false
   delete_branch_on_merge: true
 
   # Merge strategy: rebase-only
