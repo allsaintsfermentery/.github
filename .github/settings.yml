@@ -1,0 +1,40 @@
+# Organization-wide defaults applied to all repositories via safe-settings.
+# Adjust values to match your team's workflow before rollout.
+# Per-repository overrides go in .github/repos/<repo-name>.yml
+
+repository:
+  private: true
+  delete_branch_on_merge: true
+
+  # Merge strategy: rebase-only
+  allow_squash_merge: false
+  allow_merge_commit: false
+  allow_rebase_merge: true
+
+  # Repo features
+  has_issues: true
+  has_projects: false
+  has_wiki: false
+  has_discussions: false
+
+  allow_auto_merge: true
+  archived: false
+
+branches:
+  - name: main
+    protection:
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: false
+      enforce_admins: false
+      restrictions: null
+      required_status_checks:
+        strict: true
+        # Add your actual CI check names here when ready, e.g.:
+        #   - ci / test
+        #   - ci / lint
+        contexts: []
+      required_linear_history: true
+      allow_force_pushes: false
+      allow_deletions: false
