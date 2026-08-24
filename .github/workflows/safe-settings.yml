@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
 
       - name: Check out safe-settings
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: github-community-projects/safe-settings
           ref: ${{ env.SAFE_SETTINGS_VERSION }}
