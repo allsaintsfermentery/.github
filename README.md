@@ -70,6 +70,7 @@ Configure these as either:
 ### Secrets
 
 - `SAFE_SETTINGS_APP_PRIVATE_KEY` — the full PEM private key for the GitHub App
+- `SAFE_SETTINGS_APP_CLIENT_SECRET` — the GitHub App client secret
 
 ## Recommended GitHub App permissions
 
