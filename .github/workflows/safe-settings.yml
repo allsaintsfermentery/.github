@@ -1,0 +1,115 @@
+name: Safe settings
+
+on:
+  pull_request:
+    paths:
+      - .github/settings.yml
+      - .github/repos/**
+      - .github/workflows/safe-settings.yml
+      - README.md
+  push:
+    branches:
+      - main
+    paths:
+      - .github/settings.yml
+      - .github/repos/**
+      - .github/workflows/safe-settings.yml
+      - README.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SAFE_SETTINGS_VERSION: 2.1.21
+  SAFE_SETTINGS_CODE_DIR: .safe-settings
+
+jobs:
+  safe-settings:
+    name: ${{ github.event_name == 'push' && 'Apply settings' || 'Dry-run settings' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create GitHub App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SAFE_SETTINGS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SAFE_SETTINGS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: .github
+          permission-contents: read
+
+      - name: Check out configuration repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Check out safe-settings
+        uses: actions/checkout@v4
+        with:
+          repository: github-community-projects/safe-settings
+          ref: ${{ env.SAFE_SETTINGS_VERSION }}
+          path: ${{ env.SAFE_SETTINGS_CODE_DIR }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ env.SAFE_SETTINGS_CODE_DIR }}/package-lock.json
+
+      - name: Install safe-settings dependencies
+        run: npm ci
+        working-directory: ${{ env.SAFE_SETTINGS_CODE_DIR }}
+
+      # Probot v14 initialises probot.log asynchronously inside #initialize().
+      # The upstream full-sync.js calls probot.log.info() immediately after
+      # createProbot(), before the async init has resolved, causing:
+      #   TypeError: Cannot read properties of null (reading 'info')
+      # This step patches the checked-out full-sync.js to await probot.ready()
+      # first, and adds a defensive guard that emits a clear error if the logger
+      # is still unavailable (e.g. due to a bad APP_ID or PRIVATE_KEY value).
+      - name: Patch full-sync.js to await Probot initialisation
+        working-directory: ${{ env.SAFE_SETTINGS_CODE_DIR }}
+        run: |
+          node - <<'PATCH_EOF'
+          const fs = require('fs')
+          const file = 'full-sync.js'
+          let src = fs.readFileSync(file, 'utf8')
+
+          const needle = 'const probot = createProbot()'
+          if (!src.includes(needle)) {
+            console.log('Needle not found in full-sync.js – patch may already be applied or file changed upstream. Skipping.')
+            process.exit(0)
+          }
+
+          const replacement = [
+            'const probot = createProbot()',
+            '  // Wait for Probot async initialisation (probot.log is null until ready())',
+            '  await probot.ready()',
+            '  if (!probot || !probot.log) {',
+            '    console.error(\'Probot initialisation failed: logger is unavailable.\')',
+            '    console.error(\'Ensure APP_ID is a valid numeric app ID and PRIVATE_KEY is a valid PEM-encoded RSA private key.\')',
+            '    process.exit(1)',
+            '  }',
+          ].join('\n')
+
+          src = src.replace(needle, replacement)
+          fs.writeFileSync(file, src)
+          console.log('Patched full-sync.js successfully.')
+          PATCH_EOF
+
+      - name: Run safe-settings
+        env:
+          APP_ID: ${{ vars.SAFE_SETTINGS_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.SAFE_SETTINGS_APP_PRIVATE_KEY }}
+          GH_ORG: ${{ github.repository_owner }}
+          ADMIN_REPO: .github
+          CONFIG_PATH: .github
+          CREATE_PR_COMMENT: "false"
+          CREATE_ERROR_ISSUE: "false"
+          FULL_SYNC_NOP: ${{ github.event_name == 'push' && 'false' || 'true' }}
+        run: npm run full-sync
+        working-directory: ${{ env.SAFE_SETTINGS_CODE_DIR }}
