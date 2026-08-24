@@ -41,7 +41,7 @@ jobs:
           permission-contents: read
 
       - name: Check out configuration repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
