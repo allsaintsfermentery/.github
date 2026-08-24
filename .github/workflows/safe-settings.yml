@@ -1,0 +1,78 @@
+name: Safe settings
+
+on:
+  pull_request:
+    paths:
+      - .github/settings.yml
+      - .github/repos/**
+      - .github/workflows/safe-settings.yml
+      - README.md
+  push:
+    branches:
+      - main
+    paths:
+      - .github/settings.yml
+      - .github/repos/**
+      - .github/workflows/safe-settings.yml
+      - README.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SAFE_SETTINGS_VERSION: 2.1.21
+  SAFE_SETTINGS_CODE_DIR: .safe-settings
+
+jobs:
+  safe-settings:
+    name: ${{ github.event_name == 'push' && 'Apply settings' || 'Dry-run settings' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create GitHub App installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SAFE_SETTINGS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SAFE_SETTINGS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: .github
+          permission-contents: read
+
+      - name: Check out configuration repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Check out safe-settings
+        uses: actions/checkout@v4
+        with:
+          repository: github-community-projects/safe-settings
+          ref: ${{ env.SAFE_SETTINGS_VERSION }}
+          path: ${{ env.SAFE_SETTINGS_CODE_DIR }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ env.SAFE_SETTINGS_CODE_DIR }}/package-lock.json
+
+      - name: Install safe-settings dependencies
+        run: npm ci
+        working-directory: ${{ env.SAFE_SETTINGS_CODE_DIR }}
+
+      - name: Run safe-settings
+        env:
+          APP_ID: ${{ vars.SAFE_SETTINGS_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.SAFE_SETTINGS_APP_PRIVATE_KEY }}
+          GH_ORG: ${{ github.repository_owner }}
+          ADMIN_REPO: .github
+          CONFIG_PATH: .github
+          CREATE_PR_COMMENT: "false"
+          CREATE_ERROR_ISSUE: "false"
+          FULL_SYNC_NOP: ${{ github.event_name == 'push' && 'false' || 'true' }}
+        run: npm run full-sync
+        working-directory: ${{ env.SAFE_SETTINGS_CODE_DIR }}
