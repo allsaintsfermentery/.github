@@ -20,6 +20,5 @@ All Saints Fermentery is a tribute to these brave men and women who remained ste
 
 ## Motto
 
-> [!IMPORTANT]
 > **Stat crux dum volvitur orbis**  
 > *"The Cross is steady while the world turns"*
