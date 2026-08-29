@@ -26,7 +26,7 @@ env:
 
 jobs:
   safe-settings:
-    name: ${{ github.event_name == 'push' && 'Apply settings' || 'Dry-run settings' }}
+    name: ${{ github.event_name == 'push' && 'Apply settings' || 'Validate settings' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -64,7 +64,25 @@ jobs:
         run: npm ci
         working-directory: ${{ env.SAFE_SETTINGS_CODE_DIR }}
 
+      - name: Validate safe-settings config
+        if: github.event_name != 'push'
+        run: |
+          ruby <<'RUBY'
+          require 'pathname'
+          require 'yaml'
+
+          workspace = Pathname(ENV.fetch('GITHUB_WORKSPACE'))
+          config_root = workspace.join('.github')
+          files = [config_root.join('settings.yml')] + Dir[config_root.join('repos', '**', '*.yml').to_s].map { |path| Pathname(path) }
+
+          files.each do |file|
+            YAML.safe_load_file(file.to_s, permitted_classes: [], aliases: true)
+            puts "Validated #{file.relative_path_from(workspace)}"
+          end
+          RUBY
+
       - name: Run safe-settings
+        if: github.event_name == 'push'
         env:
           APP_ID: ${{ vars.SAFE_SETTINGS_APP_ID }}
           PRIVATE_KEY: ${{ secrets.SAFE_SETTINGS_APP_PRIVATE_KEY }}
@@ -75,6 +93,6 @@ jobs:
           CONFIG_PATH: .github
           CREATE_PR_COMMENT: "false"
           CREATE_ERROR_ISSUE: "false"
-          FULL_SYNC_NOP: ${{ github.event_name == 'push' && 'false' || 'true' }}
+          FULL_SYNC_NOP: "false"
         run: npm run full-sync
         working-directory: ${{ env.SAFE_SETTINGS_CODE_DIR }}
