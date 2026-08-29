@@ -40,11 +40,11 @@ Current baseline highlights:
 
 This repository runs `safe-settings` from GitHub Actions instead of as a long-lived webhook service.
 
-- Pull requests that change `README.md`, `.github/settings.yml`, `.github/repos/**`, or `.github/workflows/safe-settings.yml` run `safe-settings` in dry-run mode.
-- Pushes to `main` for those same paths apply the settings.
-- `workflow_dispatch` is also available for an on-demand dry-run.
+- Pull requests that change `README.md`, `.github/settings.yml`, `.github/repos/**`, or `.github/workflows/safe-settings.yml` validate the `safe-settings` YAML files.
+- Pushes to `main` for those same paths run `safe-settings` full sync and apply the settings.
+- `workflow_dispatch` is also available for on-demand config validation.
 
-The workflow follows the usage model documented by the community project: it checks out [`github-community-projects/safe-settings`](https://github.com/github-community-projects/safe-settings) at a pinned release, installs dependencies, and runs `npm run full-sync`. `safe-settings` does not currently provide a dedicated first-party GitHub Action for this flow, so this repository uses the supported Node-based invocation instead.
+The workflow follows the usage model documented by the community project for applied syncs: it checks out [`github-community-projects/safe-settings`](https://github.com/github-community-projects/safe-settings) at a pinned release, installs dependencies, and runs `npm run full-sync` on pushes to `main`. For pull requests and manual runs, the workflow validates the YAML configuration files without invoking `safe-settings` full-sync in NOP mode.
 
 ## Authentication
 
@@ -95,5 +95,5 @@ Install the app on the `allsaintsfermentery` organization. For an org-wide basel
 - [ ] Install the app on the `allsaintsfermentery` organization
 - [ ] Save `SAFE_SETTINGS_APP_ID` and `SAFE_SETTINGS_APP_CLIENT_ID` as variables
 - [ ] Save `SAFE_SETTINGS_APP_PRIVATE_KEY` as a secret
-- [ ] Open a pull request that changes one of the managed files and confirm the dry-run workflow passes
+- [ ] Open a pull request that changes one of the managed files and confirm the validation workflow passes
 - [ ] Merge to `main` to apply the settings
